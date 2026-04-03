@@ -1,0 +1,61 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Runtime outputs
+run_logs/
+runtime_artifacts/
+tests/_tmp/
+tests/_tmp_smoke/
+tests/_tmp_context/
+tests/_tmp_deterministic/
+tests/_tmp_recovery/
+tests/_tmp_runner/
+logseq/
+
+# Local environment and secrets
+.env
+.env.*
+*.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.code-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local scratch space
+.codex_tmp/
+.codex/
+
+# Packaging outputs
+build/
+dist/
+*.egg-info/
+docs/
+
+#secrets
+AGENTS.md
+SETUP.md
+第二版.txt
+RELEASE.md

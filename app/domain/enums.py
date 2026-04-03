@@ -1,0 +1,59 @@
+from enum import StrEnum
+
+
+class TaskKeyword(StrEnum):
+    TODO = "TODO"
+    DOING = "DOING"
+    WAITING = "WAITING"
+
+
+class RuntimeStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+
+
+class TaskType(StrEnum):
+    MARKDOWN_APPEND = "MARKDOWN_APPEND"
+    METADATA_UPDATE = "METADATA_UPDATE"
+    FILE_NAMING = "FILE_NAMING"
+    LINK_APPEND = "LINK_APPEND"
+    REASONING_ANALYSIS = "REASONING_ANALYSIS"
+    CROSS_PAGE_SYNTHESIS = "CROSS_PAGE_SYNTHESIS"
+    SPEC_DRAFT = "SPEC_DRAFT"
+    CODE_CHANGE = "CODE_CHANGE"
+
+
+class AnalysisMode(StrEnum):
+    NORMAL = "NORMAL"
+    REASONING_ANALYSIS = "REASONING_ANALYSIS"
+    CROSS_PAGE_SYNTHESIS = "CROSS_PAGE_SYNTHESIS"
+
+
+class ExecutorType(StrEnum):
+    DETERMINISTIC = "DETERMINISTIC"
+    CODEX = "CODEX"
+    MIXED = "MIXED"
+
+
+class ResultStatus(StrEnum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    PARTIAL = "PARTIAL"
+    OPEN_QUESTION = "OPEN_QUESTION"
+
+
+class ArtifactType(StrEnum):
+    MARKDOWN = "MARKDOWN"
+    JSON = "JSON"
+    PATCH = "PATCH"
+    TEXT = "TEXT"
+    NONE = "NONE"
+
+
+class AnswerType(StrEnum):
+    DIRECT_ANSWER = "DIRECT_ANSWER"
+    BEST_EFFORT = "BEST_EFFORT"
+    HYPOTHESIS = "HYPOTHESIS"
