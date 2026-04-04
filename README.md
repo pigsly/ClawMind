@@ -1,5 +1,11 @@
 # ClawMind -- Logseq AI Coworker
 
+![Python](https://img.shields.io/badge/python-3.13%2B-blue)
+![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
+![Status](https://img.shields.io/badge/status-active-success)
+![Logseq](https://img.shields.io/badge/Logseq-0.10.15-green)
+![License](https://img.shields.io/github/license/pigsly/ClawMind)
+
 ![image](logo3.png)
 
 > From chat to interaction.
