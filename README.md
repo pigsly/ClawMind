@@ -25,7 +25,12 @@ ClawMind is designed for knowledge workflows where correctness, traceability, an
 
 ## Demo
 
-[![Demo](https://github-readme-youtube-cards.vercel.app/api/?id=BI61wqX2wQY)](https://www.youtube.com/watch?v=BI61wqX2wQY)
+  <div align="center">
+    <a href="https://www.youtube.com/watch?v=BI61wqX2wQY">
+      <img src="./logo.png" alt="youtube video"
+  width="600">
+    </a>
+  </div>
 
 ## How It Works
 
