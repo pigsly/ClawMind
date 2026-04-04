@@ -13,6 +13,14 @@ ClawMind is a Logseq-native workflow runner for individuals who need AI executio
 
 - Work Runner manages task intake and state transitions, Codex Runner handles reasoning-heavy execution, and the Deterministic Executor writes results back in a repeatable way.
 
+## Demo
+
+https://github.com/user-attachments/assets/99e62538-e782-47f3-be69-966e32e90ac1
+
+## Quick Start
+
+For installation, .env setup, and first run instructions, see [UserManual.md](./UserManual.md).
+
 ## Why ClawMind
 
 ClawMind is designed for knowledge workflows where correctness, traceability, and operational clarity matter.
@@ -22,10 +30,6 @@ ClawMind is designed for knowledge workflows where correctness, traceability, an
 - Every run can leave reproducible audit evidence in
   `run_logs/` and `runtime_artifacts/`.
 - The system is built to reduce ad hoc task handling and turn repeated thinking work into durable process assets.
-
-## Demo
-
-https://github.com/user-attachments/assets/99e62538-e782-47f3-be69-966e32e90ac1
 
 ## How It Works
 
@@ -81,7 +85,7 @@ runtime_artifacts/  Execution artifacts
 - Install Logseq
 - Python 3.13+
 
-For setup details and step-by-step usage, see [UserManual.md](D:/PY_REPO/ClawMind/UserManual.md).
+For setup details and step-by-step usage, see [UserManual.md](./UserManual.md).
 
 ## Installation
 
@@ -91,7 +95,7 @@ Recommended for development:
 uv sync
 ```
 
-For user installation, environment configuration, and `.env` setup, see [UserManual.md](D:/PY_REPO/ClawMind/UserManual.md).
+For user installation, environment configuration, and `.env` setup, see [UserManual.md](./UserManual.md).
 
 ## Run
 
@@ -101,7 +105,7 @@ Start the persistent worker:
 clawmind run-worker
 ```
 
-For startup behavior, stop instructions, and runtime configuration, see [UserManual.md](D:/PY_REPO/ClawMind/UserManual.md).
+For startup behavior, stop instructions, and runtime configuration, see [UserManual.md](./UserManual.md).
 
 ## CLI Helper Commands
 
