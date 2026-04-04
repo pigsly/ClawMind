@@ -41,14 +41,16 @@ For task wording, routing signals, and model selection rules, see [TaskManual.md
 ClawMind guides the user-visible workflow from task capture to controlled writeback.
 
 ```mermaid
-flowchart LR
-    A[Write a task in Logseq]
-    B[ClawMind reads context and routes the task]
-    C[Execute with the right reasoning depth]
-    D[Write results back in a controlled way]
-    E[Keep a replayable audit trail]
+sequenceDiagram
+    participant U as User in Logseq
+    participant C as ClawMind
+    participant O as Output and Audit
 
-    A --> B --> C --> D --> E
+    U->>C: Write a task in Logseq
+    C->>C: Read context and route the task
+    C->>C: Execute with the right reasoning depth
+    C->>O: Write results back and keep a replayable audit trail
+    O->>U: Return the answer to Logseq
 ```
 
 ### Roles
