@@ -25,7 +25,7 @@ ClawMind is designed for knowledge workflows where correctness, traceability, an
 
 ## Demo
 
-<video src="./logseq_Edemo.mp4" controls></video>
+[Watch the demo video](./logseq_Edemo.mp4)
 
 ## How It Works
 
