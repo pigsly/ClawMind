@@ -1,4 +1,4 @@
-# ClawMind -- Logseq AI Coworker
+# ClawMind -- AI for Thinking Work, Grounded in Logseq
 
 ![Python](https://img.shields.io/badge/python-3.13%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
@@ -13,15 +13,13 @@
 
 ClawMind turns Logseq into a controlled AI workspace for people who need thinking work to stay visible, reviewable, and repeatable.
 
-- It turns everyday notes, questions, and task blocks into a controlled execution flow that is understandable, replayable, and auditable.
+In most AI tools, the answer remains but the path disappears.
 
-- Unlike a generic AI chat tool, ClawMind separates flow control, reasoning, and writeback into explicit system boundaries.
-
-- Work Runner manages task intake and state transitions, Codex Runner handles reasoning-heavy execution, and the Deterministic Executor writes results back in a repeatable way.
+ClawMind does not just generate answers. It turns thinking work into a process that stays visible after the answer is done.
 
 ## Demo
 
-Watch ClawMind turn a simple Logseq task into a controlled, traceable, and replayable AI workflow.
+Watch a single Logseq task turn into a traced workflow, a written-back result, and a durable audit trail.
 
 https://github.com/user-attachments/assets/99e62538-e782-47f3-be69-966e32e90ac1
 
@@ -53,21 +51,18 @@ sequenceDiagram
     O->>U: Return the answer to Logseq
 ```
 
-### Roles
+### Execution Boundaries
 
-- Work Runner is the flow controller.
-  It scans DOING tasks, normalizes id::, moves tasks into WAITING, builds execution context, and coordinates the full run.
-- Codex Runner is the reasoning engine.
-  It handles the AI-heavy part of the task and returns structured output, but it does not directly mutate Logseq pages or task state.
-- Deterministic Executor is the writeback layer.
-  It applies results in a repeatable way, writes answer pages and journal links, and helps preserve idempotency and auditability.
+- Routing is separated from reasoning.
+- Reasoning is separated from writeback.
+- Writeback remains controlled and repeatable.
 
-## Core Guarantees
+## Built for Reliability
 
-- stable `id::` primary key
-- runtime / knowledge domain separation
-- writeback idempotency
-- AI does not write to Logseq directly
+- Each task keeps a stable identity, so work can be tracked consistently over time.
+- Context and runtime behavior stay separated, reducing accidental spillover between knowledge and execution.
+- Writeback is designed to stay repeatable, so the same workflow does not create drifting results.
+- AI does not write to Logseq directly without the controlled writeback layer.
 
 ## Project Structure
 
