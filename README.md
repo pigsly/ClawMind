@@ -11,7 +11,7 @@
 > From chat to interaction.
 > You’re not talking to AI—you’re thinking with yourself.
 
-ClawMind is a Logseq-native workflow runner for individuals who need AI execution with human oversight.
+ClawMind turns Logseq into a controlled AI workspace for people who need thinking work to stay visible, reviewable, and repeatable.
 
 - It turns everyday notes, questions, and task blocks into a controlled execution flow that is understandable, replayable, and auditable.
 
@@ -21,42 +21,34 @@ ClawMind is a Logseq-native workflow runner for individuals who need AI executio
 
 ## Demo
 
+Watch ClawMind turn a simple Logseq task into a controlled, traceable, and replayable AI workflow.
+
 https://github.com/user-attachments/assets/99e62538-e782-47f3-be69-966e32e90ac1
-
-## Quick Start
-
-For installation, .env setup, and first run instructions, see [UserManual.md](./UserManual.md).
 
 ## Why ClawMind
 
-ClawMind is designed for knowledge workflows where correctness, traceability, and operational clarity matter.
+ClawMind is built for knowledge workflows where correctness, traceability, and operational clarity matter. Most AI tools are fast, but their context is hidden, their decisions are hard to inspect, and their outputs are difficult to replay.
 
-- Logseq remains the human-facing workflow surface.
-- AI execution is bounded by explicit runtime and writeback rules.
-- Every run can leave reproducible audit evidence in
-  `run_logs/` and `runtime_artifacts/`.
-- The system is built to reduce ad hoc task handling and turn repeated thinking work into durable process assets.
+ClawMind takes a different path. It uses Logseq as the human-facing workflow surface, page links as explicit context structure, and controlled task routing to balance fast answers, deeper reasoning, and deterministic writeback. Instead of burying short-term memory inside a transient prompt, it keeps context visible, linkable, and easier to carry across tasks.
+
+The result is not just better answers, but a more reliable execution model: bounded AI behavior, reproducible writeback, and audit-friendly records that can be reviewed after the fact. ClawMind is a workflow layer for people who need thinking work to remain visible, reviewable, and durable over time.
+
+For installation, `.env` setup, first run, and usage details, see [UserManual.md](./UserManual.md).
+For task wording, routing signals, and model selection rules, see [TaskManual.md](./TaskManual.md).
 
 ## How It Works
 
-  ClawMind turns a Logseq task into a controlled workflow:
-
-  `DOING -> WAITING -> execute -> writeback -> audit`
+ClawMind guides the user-visible workflow from task capture to controlled writeback.
 
 ```mermaid
-sequenceDiagram
-    participant L as Logseq Task
-    participant W as Work Runner
-    participant C as Codex Runner
-    participant D as Deterministic Executor
+flowchart LR
+    A[Write a task in Logseq]
+    B[ClawMind reads context and routes the task]
+    C[Execute with the right reasoning depth]
+    D[Write results back in a controlled way]
+    E[Keep a replayable audit trail]
 
-    L->>W: DOING task detected
-    W->>W: Normalize id and lock as WAITING
-    W->>C: Build context and execute
-    C-->>W: Return structured result
-    W->>D: Apply deterministic writeback
-    D-->>L: Update answer and links
-    W-->>L: Record audit trail
+    A --> B --> C --> D --> E
 ```
 
 ### Roles
@@ -86,61 +78,18 @@ runtime_artifacts/  Execution artifacts
 
 ## Environment Requirements
 
-- WINDOWS OS
-- Install Codex CLI (Plus / month)
-- Install Logseq
+- Windows
+- Logseq
+- Codex CLI
 - Python 3.13+
-
-For setup details and step-by-step usage, see [UserManual.md](./UserManual.md).
-
-## Installation
-
-Recommended for development:
-
-```powershell
-uv sync
-```
-
-For user installation, environment configuration, and `.env` setup, see [UserManual.md](./UserManual.md).
 
 ## Run
 
-Start the persistent worker:
+Start the persistent worker to continuously watch Logseq tasks, route execution, and write results back in a controlled way:
 
 ```powershell
 clawmind run-worker
 ```
-
-For startup behavior, stop instructions, and runtime configuration, see [UserManual.md](./UserManual.md).
-
-## CLI Helper Commands
-
-Check version:
-
-```powershell
-clawmind version
-```
-
-Show installation info:
-
-```powershell
-clawmind install-info
-```
-
-Upgrade:
-
-```powershell
-clawmind upgrade --method auto
-clawmind upgrade --method pipx
-clawmind upgrade --method uv
-clawmind upgrade --method pip
-```
-
-Method mapping:
-
-- `pipx install clawmind` -> `clawmind upgrade --method pipx`
-- `uv tool install clawmind` -> `clawmind upgrade --method uv`
-- `pip install clawmind` -> `clawmind upgrade --method pip`
 
 ## Roadmap
 
@@ -151,4 +100,5 @@ Method mapping:
 
 ## Contact
 
+- GitHub Issues: https://github.com/pigsly/ClawMind/issues
 - X.com @pigslybear
