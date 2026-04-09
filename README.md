@@ -11,11 +11,15 @@
 > From chat to interaction.
 > You’re not talking to AI—you’re thinking with yourself.
 
+[中文說明](./READCE.md)
+
 ClawMind turns Logseq into a controlled AI workspace for people who need thinking work to stay visible, reviewable, and repeatable.
 
 In most AI tools, the answer remains but the path disappears.
 
 ClawMind does not just generate answers. It turns thinking work into a process that stays visible after the answer is done.
+
+ClawMind depends on schema-validated structured output, so backend models are selected for reliability, not only raw capability.
 
 ## Demo
 
@@ -30,6 +34,8 @@ ClawMind is built for knowledge workflows where correctness, traceability, and o
 ClawMind takes a different path. It uses Logseq as the human-facing workflow surface, page links as explicit context structure, and controlled task routing to balance fast answers, deeper reasoning, and deterministic writeback. Instead of burying short-term memory inside a transient prompt, it keeps context visible, linkable, and easier to carry across tasks.
 
 The result is not just better answers, but a more reliable execution model: bounded AI behavior, reproducible writeback, and audit-friendly records that can be reviewed after the fact. ClawMind is a workflow layer for people who need thinking work to remain visible, reviewable, and durable over time.
+
+ClawMind currently supports two execution backends: `codex_cli` for the Codex CLI path, and `gemini_api` for the Gemini API path with native JSON output and difficulty-based model routing.
 
 For installation, `.env` setup, first run, and usage details, see [UserManual.md](./UserManual.md).
 For task wording, routing signals, and model selection rules, see [TaskManual.md](./TaskManual.md).
@@ -78,6 +84,7 @@ runtime_artifacts/  Execution artifacts
 - Windows
 - Logseq
 - Codex CLI
+- Gemini API key for the `gemini_api` path
 - Python 3.13+
 
 ## Run
@@ -99,3 +106,4 @@ clawmind run-worker
 
 - GitHub Issues: https://github.com/pigsly/ClawMind/issues
 - X.com @pigslybear
+

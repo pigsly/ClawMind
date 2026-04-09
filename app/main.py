@@ -12,7 +12,7 @@ from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 from typing import Callable
 
-from app.adapters.llm_adapter import CodexCliAdapter, LlmAdapter
+from app.adapters.llm_adapter import CodexCliAdapter, GeminiApiAdapter, LlmAdapter
 from app.adapters.logseq_adapter import LogseqAdapter
 from app.application.audit_service import AuditService
 from app.application.classifier_service import ClassifierService
@@ -316,21 +316,29 @@ def run_worker(
 
 
 def _add_runtime_options(parser: argparse.ArgumentParser, *, include_worker_options: bool) -> None:
-    config = AppConfig()
+    try:
+        config = AppConfig()
+        logseq_default = str(config.logseq_dir)
+        codex_default = config.codex_cli_path
+        timeout_default = config.codex_timeout_seconds
+    except ValueError:
+        logseq_default = './logseq'
+        codex_default = 'codex'
+        timeout_default = None
     parser.add_argument(
         '--logseq-dir',
-        default=str(config.logseq_dir),
+        default=logseq_default,
         help='Logseq graph root to use for this run',
     )
     parser.add_argument(
         '--codex-cli-path',
-        default=config.codex_cli_path,
+        default=codex_default,
         help='Path to the Codex CLI executable',
     )
     parser.add_argument(
         '--codex-timeout-seconds',
         type=float,
-        default=config.codex_timeout_seconds,
+        default=timeout_default,
         help='Timeout in seconds for each codex exec call',
     )
     if include_worker_options:
@@ -367,6 +375,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_llm_adapter(config: AppConfig, args: argparse.Namespace) -> LlmAdapter:
+    llm_brand = getattr(config, 'llm_brand', 'codex_cli')
+    if llm_brand == 'codex_cli':
+        return CodexCliAdapter(
+            codex_cli_path=args.codex_cli_path,
+            working_dir=config.root_dir,
+            extra_args=['--full-auto'],
+            command_timeout_seconds=args.codex_timeout_seconds,
+        )
+    if llm_brand == 'gemini_api':
+        return GeminiApiAdapter(
+            api_key=config.gemini_api_key,
+            flash_model=config.gemini_flash_model,
+            pro_model=config.gemini_pro_model,
+            working_dir=config.root_dir,
+            command_timeout_seconds=args.codex_timeout_seconds,
+            llm_brand=llm_brand,
+        )
+    raise ValueError(f'Unsupported llm_brand: {llm_brand}')
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -380,12 +408,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_upgrade(method=args.method)
 
     config = AppConfig()
-    llm_adapter: LlmAdapter = CodexCliAdapter(
-        codex_cli_path=args.codex_cli_path,
-        working_dir=config.root_dir,
-        extra_args=['--full-auto'],
-        command_timeout_seconds=args.codex_timeout_seconds,
-    )
+    llm_adapter = build_llm_adapter(config, args)
 
     if command == 'run-once':
         return run_once(config, logseq_dir=Path(args.logseq_dir), llm_adapter=llm_adapter)
@@ -403,3 +426,8 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
+
+
+
+

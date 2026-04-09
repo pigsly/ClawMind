@@ -27,6 +27,10 @@ In general:
 - reasoning-heavy requests can be routed to a deeper analysis path
 - structured update tasks can be routed to a more deterministic execution path
 
+When `LLM_BRAND=gemini_api`, ClawMind uses the Gemini API path instead of the Codex CLI path. In that mode, simpler requests are typically routed to `gemini-2.5-flash`, while heavier reasoning tasks can be routed to `gemini-2.5-pro`.
+
+ClawMind also considers whether a task looks like multi-dimensional analysis. In practice, this means the router gives extra weight to requests that combine comparison or decision wording with multiple evaluation angles, such as tradeoffs across several factors. Internally, this behaves like a `multi_analysis_bonus_score`: it is an extra routing signal, not the only rule.
+
 This allows the system to balance speed, reasoning depth, and writeback stability.
 
 ## What Makes a Good Task

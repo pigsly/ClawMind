@@ -133,6 +133,26 @@ class ClassifierServiceTests(unittest.TestCase):
         self.assertEqual(instruction.analysis_mode, AnalysisMode.REASONING_ANALYSIS)
         self.assertEqual(instruction.model, 'gpt-5.4')
 
+    def test_real_world_multi_dimension_comparison_raises_reasoning_analysis(self) -> None:
+        task = self.build_task(
+            raw_block_text='- DOING 請比較 Golden Retriever、Labrador Retriever 和 Cavalier King Charles Spaniel 哪一種更適合安靜的公寓生活，並分析牠們在個性、運動需求、整理難度與新手友善度上的取捨'
+        )
+
+        instruction = self.service.classify(task)
+
+        self.assertEqual(instruction.task_type, TaskType.MARKDOWN_APPEND)
+        self.assertEqual(instruction.analysis_mode, AnalysisMode.REASONING_ANALYSIS)
+        self.assertEqual(instruction.executor_type, ExecutorType.CODEX)
+        self.assertEqual(instruction.model, 'gpt-5.4')
+
+    def test_multi_dimension_structure_without_reasoning_cues_stays_normal(self) -> None:
+        task = self.build_task(raw_block_text='- DOING 在個性、速度、成本上做整理')
+
+        instruction = self.service.classify(task)
+
+        self.assertEqual(instruction.analysis_mode, AnalysisMode.NORMAL)
+        self.assertEqual(instruction.model, 'gpt-5.4-mini')
+
     def test_english_single_words_do_not_count_as_uncertainty_phrases(self) -> None:
         task = self.build_task(raw_block_text='- DOING compare recommend optimize tradeoff')
 

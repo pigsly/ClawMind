@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any
 
 try:
@@ -55,6 +56,32 @@ UNCERTAINTY_CUE_WEIGHTS: tuple[tuple[tuple[str, ...], int], ...] = (
     (("比較", "比较", "取捨", "取舍", "檢查", "检查", "compare a and b", "what are the tradeoffs", "please check whether"), 2),
 )
 COMPLEXITY_CUES = ("子任務", "workflow", "系統設計", "structured", "結構化", "整合")
+COMPARISON_DECISION_CUES = (
+    "請比較",
+    "比較",
+    "比较",
+    "取捨",
+    "取舍",
+    "更適合",
+    "更适合",
+    "哪一種更適合",
+    "哪一种更适合",
+    "哪個比較適合",
+    "哪个比较适合",
+    "建議我怎麼選",
+    "建议我怎么选",
+    "怎麼選",
+    "怎么选",
+    "recommend",
+    "tradeoffs",
+    "which is better",
+    "which is more suitable",
+)
+MULTI_DIMENSION_PATTERNS = (
+    re.compile(r"(在|從|从).{0,40}(、|，|與|与|和|及).{0,40}(、|，|與|与|和|及)"),
+    re.compile(r"(個性|个性|優缺點|优缺点|風險|风险|成本|速度|維護性|维护性|temperament|pros and cons|cost|risk|performance|maintainability).{0,30}(、|，|與|与|和|及|,| and ).{0,30}"),
+    re.compile(r"(in terms of|across|for).{0,80}(,| and ).{0,80}(,| and )"),
+)
 FAST_MODEL = "gpt-5.4-mini"
 DEEP_MODEL = "gpt-5.4"
 
@@ -129,6 +156,7 @@ class ClassifierService:
     def __init__(self, execution_policy: ExecutionPolicy | None = None) -> None:
         self.execution_policy = execution_policy or ExecutionPolicy()
         self._analysis_matcher = PhraseMatcher(ANALYSIS_CUES)
+        self._comparison_decision_matcher = PhraseMatcher(COMPARISON_DECISION_CUES)
         self._uncertainty_matchers = tuple(
             (PhraseMatcher(cues), weight)
             for cues, weight in UNCERTAINTY_CUE_WEIGHTS
@@ -194,14 +222,24 @@ class ClassifierService:
             for matcher, weight in self._uncertainty_matchers
             if matcher.contains_any(task_sentence)
         )
+        comparison_decision_score = len(self._comparison_decision_matcher.extract(task_sentence))
+        multi_dimension_structure_score = self._multi_dimension_structure_score(task_sentence)
         if page_count > 0:
             complexity_score += 1
         if self._analysis_matcher.contains_any(task_sentence):
             uncertainty_score += 1
 
-        if complexity_score >= 4 or uncertainty_score >= 4:
+        if (
+            complexity_score >= 4
+            or uncertainty_score >= 4
+            or comparison_decision_score >= 3
+            or (comparison_decision_score >= 2 and multi_dimension_structure_score >= 1)
+        ):
             return AnalysisMode.REASONING_ANALYSIS
         return AnalysisMode.NORMAL
+
+    def _multi_dimension_structure_score(self, task_sentence: str) -> int:
+        return sum(1 for pattern in MULTI_DIMENSION_PATTERNS if pattern.search(task_sentence))
 
     def _parse_validation_rules(self, raw_rules: str) -> list[str]:
         if not raw_rules.strip():

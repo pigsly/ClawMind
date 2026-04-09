@@ -32,38 +32,45 @@ class AppConfigTests(unittest.TestCase):
         self.assertEqual(config.config_source, 'env_var:CLAWMIND_ENV_PATH')
         self.assertEqual(config.logseq_dir, Path('D:/explicit'))
 
-    def test_prefers_cwd_env_when_explicit_path_is_missing(self) -> None:
-        cwd_dir = self.temp_root / 'cwd'
-        cwd_dir.mkdir()
-        cwd_env = cwd_dir / '.env'
-        cwd_env.write_text('LOGSEQ_PATH=D:/cwd\n', encoding='utf-8')
+    def test_defaults_llm_brand_to_codex_cli(self) -> None:
         project_root = self.temp_root / 'project'
         project_root.mkdir()
-        (project_root / '.env').write_text('LOGSEQ_PATH=D:/project\n', encoding='utf-8')
 
         with patch.dict(os.environ, {}, clear=True):
-            with patch('pathlib.Path.cwd', return_value=cwd_dir):
+            with patch('pathlib.Path.cwd', return_value=self.temp_root):
                 config = AppConfig(root_dir=project_root)
 
-        self.assertEqual(config.env_path, cwd_env)
-        self.assertEqual(config.config_source, 'cwd:.env')
-        self.assertEqual(config.logseq_dir, Path('D:/cwd'))
+        self.assertEqual(config.llm_brand, 'codex_cli')
+        self.assertEqual(config.gemini_flash_model, 'gemini-2.5-flash')
+        self.assertEqual(config.gemini_pro_model, 'gemini-2.5-pro')
+        self.assertIsNone(config.gemini_api_key)
 
-    def test_falls_back_to_project_root_env(self) -> None:
-        cwd_dir = self.temp_root / 'cwd'
-        cwd_dir.mkdir()
+    def test_reads_gemini_api_settings_from_env_file(self) -> None:
         project_root = self.temp_root / 'project'
         project_root.mkdir()
-        project_env = project_root / '.env'
-        project_env.write_text('LOGSEQ_PATH=D:/project\n', encoding='utf-8')
+        (project_root / '.env').write_text(
+            'LLM_BRAND=gemini_api\nGEMINI_API_KEY=test-key\nGEMINI_FLASH_MODEL=gemini-2.5-flash\nGEMINI_PRO_MODEL=gemini-2.5-pro\n',
+            encoding='utf-8',
+        )
 
         with patch.dict(os.environ, {}, clear=True):
-            with patch('pathlib.Path.cwd', return_value=cwd_dir):
+            with patch('pathlib.Path.cwd', return_value=self.temp_root):
                 config = AppConfig(root_dir=project_root)
 
-        self.assertEqual(config.env_path, project_env)
-        self.assertEqual(config.config_source, 'project_root:.env')
-        self.assertEqual(config.logseq_dir, Path('D:/project'))
+        self.assertEqual(config.llm_brand, 'gemini_api')
+        self.assertEqual(config.gemini_api_key, 'test-key')
+        self.assertEqual(config.gemini_flash_model, 'gemini-2.5-flash')
+        self.assertEqual(config.gemini_pro_model, 'gemini-2.5-pro')
+
+    def test_rejects_unknown_llm_brand(self) -> None:
+        project_root = self.temp_root / 'project'
+        project_root.mkdir()
+        (project_root / '.env').write_text('LLM_BRAND=unknown_brand\n', encoding='utf-8')
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('pathlib.Path.cwd', return_value=self.temp_root):
+                with self.assertRaisesRegex(ValueError, 'Unsupported LLM_BRAND'):
+                    AppConfig(root_dir=project_root)
 
 
 if __name__ == '__main__':

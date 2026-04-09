@@ -15,6 +15,10 @@ class AppConfig:
     run_logs_dir: Path = field(init=False)
     runtime_artifacts_dir: Path = field(init=False)
     codex_cli_path: str = field(init=False)
+    gemini_api_key: str | None = field(init=False)
+    gemini_flash_model: str = field(init=False)
+    gemini_pro_model: str = field(init=False)
+    llm_brand: str = field(init=False)
     journal_scan_days: int | None = field(init=False)
     max_retries: int = field(init=False)
     codex_timeout_seconds: int | None = field(init=False)
@@ -24,6 +28,10 @@ class AppConfig:
         env_values = self._load_env_file(self.env_path)
         logseq_value = env_values.get('LOGSEQ_PATH') or os.environ.get('LOGSEQ_PATH')
         codex_value = env_values.get('CODEX_CLI_PATH') or os.environ.get('CODEX_CLI_PATH') or 'codex'
+        gemini_api_key = env_values.get('GEMINI_API_KEY') or os.environ.get('GEMINI_API_KEY')
+        gemini_flash_model = env_values.get('GEMINI_FLASH_MODEL') or os.environ.get('GEMINI_FLASH_MODEL') or 'gemini-2.5-flash'
+        gemini_pro_model = env_values.get('GEMINI_PRO_MODEL') or os.environ.get('GEMINI_PRO_MODEL') or 'gemini-2.5-pro'
+        llm_brand_value = env_values.get('LLM_BRAND') or os.environ.get('LLM_BRAND') or 'codex_cli'
         scan_days_value = env_values.get('JOURNAL_SCAN_DAYS') or os.environ.get('JOURNAL_SCAN_DAYS')
         max_retries_value = env_values.get('MAX_RETRIES') or os.environ.get('MAX_RETRIES')
         codex_timeout_value = env_values.get('CODEX_TIMEOUT_SECONDS') or os.environ.get('CODEX_TIMEOUT_SECONDS')
@@ -31,6 +39,10 @@ class AppConfig:
         self.run_logs_dir = self.root_dir / 'run_logs'
         self.runtime_artifacts_dir = self.root_dir / 'runtime_artifacts'
         self.codex_cli_path = codex_value
+        self.gemini_api_key = gemini_api_key.strip() if gemini_api_key and gemini_api_key.strip() else None
+        self.gemini_flash_model = gemini_flash_model.strip()
+        self.gemini_pro_model = gemini_pro_model.strip()
+        self.llm_brand = self._parse_llm_brand(llm_brand_value)
         self.journal_scan_days = self._parse_optional_positive_int(scan_days_value)
         self.max_retries = self._parse_positive_int_with_default(max_retries_value, default=2)
         self.codex_timeout_seconds = self._parse_optional_positive_int(codex_timeout_value)
@@ -55,6 +67,13 @@ class AppConfig:
             key, value = line.split('=', 1)
             values[key.strip()] = value.strip()
         return values
+
+    def _parse_llm_brand(self, value: str | None) -> str:
+        normalized = str(value or '').strip() or 'codex_cli'
+        allowed = {'codex_cli', 'gemini_api'}
+        if normalized not in allowed:
+            raise ValueError(f'Unsupported LLM_BRAND: {normalized}. Allowed values: {", ".join(sorted(allowed))}')
+        return normalized
 
     def _parse_optional_positive_int(self, value: str | None) -> int | None:
         if value is None or not value.strip():

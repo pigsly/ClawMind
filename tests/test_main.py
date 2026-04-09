@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from app.adapters.llm_adapter import LlmAdapter
-from app.main import build_install_info, detect_install_method, main, run_upgrade, run_worker
+from app.main import build_install_info, build_llm_adapter, detect_install_method, main, run_upgrade, run_worker
 from app.application.runner_service import FlowEvent as RunnerFlowEvent, RunnerOutcome, TaskFailure, WorkerOutcome
 
 
@@ -323,5 +323,48 @@ class MainRunWorkerTests(unittest.TestCase):
         self.assertIn('upgrade_command=C:/Python313/python.exe -m pip install -U clawmind', printed_lines)
 
 
+
+class MainAdapterSelectionTests(unittest.TestCase):
+    def test_build_llm_adapter_uses_codex_for_codex_cli(self) -> None:
+        config = SimpleNamespace(
+            llm_brand='codex_cli',
+            codex_cli_path='codex',
+            root_dir=Path('D:/PY_REPO/ClawMind'),
+        )
+        args = SimpleNamespace(codex_cli_path='custom-codex', codex_timeout_seconds=123)
+
+        with patch('app.main.CodexCliAdapter', return_value='codex-adapter') as mock_codex:
+            adapter = build_llm_adapter(config, args)
+
+        self.assertEqual(adapter, 'codex-adapter')
+        self.assertEqual(mock_codex.call_args.kwargs['codex_cli_path'], 'custom-codex')
+        self.assertEqual(mock_codex.call_args.kwargs['working_dir'], Path('D:/PY_REPO/ClawMind'))
+        self.assertEqual(mock_codex.call_args.kwargs['command_timeout_seconds'], 123)
+
+    def test_build_llm_adapter_uses_gemini_for_gemini_api(self) -> None:
+        config = SimpleNamespace(
+            llm_brand='gemini_api',
+            codex_cli_path='codex',
+            gemini_api_key='test-key',
+            gemini_flash_model='gemini-2.5-flash',
+            gemini_pro_model='gemini-2.5-pro',
+            root_dir=Path('D:/PY_REPO/ClawMind'),
+        )
+        args = SimpleNamespace(codex_cli_path='custom-codex', codex_timeout_seconds=321)
+
+        with patch('app.main.GeminiApiAdapter', return_value='gemini-adapter') as mock_gemini:
+            adapter = build_llm_adapter(config, args)
+
+        self.assertEqual(adapter, 'gemini-adapter')
+        self.assertEqual(mock_gemini.call_args.kwargs['api_key'], 'test-key')
+        self.assertEqual(mock_gemini.call_args.kwargs['working_dir'], Path('D:/PY_REPO/ClawMind'))
+        self.assertEqual(mock_gemini.call_args.kwargs['flash_model'], 'gemini-2.5-flash')
+        self.assertEqual(mock_gemini.call_args.kwargs['pro_model'], 'gemini-2.5-pro')
+        self.assertEqual(mock_gemini.call_args.kwargs['command_timeout_seconds'], 321)
+        self.assertEqual(mock_gemini.call_args.kwargs['llm_brand'], 'gemini_api')
+
 if __name__ == '__main__':
     unittest.main()
+
+
+
