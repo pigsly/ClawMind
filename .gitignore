@@ -28,6 +28,7 @@ tests/_tmp_deterministic/
 tests/_tmp_recovery/
 tests/_tmp_runner/
 logseq/
+clawmind.egg-info/
 
 # Local environment and secrets
 .env
