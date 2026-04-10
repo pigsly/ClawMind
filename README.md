@@ -11,7 +11,7 @@
 > From chat to interaction.
 > You’re not talking to AI—you’re thinking with yourself.
 
-[中文說明](./READCE.md)
+[中文說明](./READCE.md) | [UserManual.md](./UserManual.md) | [TaskManual.md](./TaskManual.md)
 
 ClawMind turns Logseq into a **controlled AI workspace** for people who need thinking work to stay **visible, reviewable, and repeatable**.
 
