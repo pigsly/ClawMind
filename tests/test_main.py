@@ -285,7 +285,8 @@ class MainRunWorkerTests(unittest.TestCase):
             with patch('builtins.print') as mock_print:
                 exit_code = run_upgrade(
                     method='auto',
-                    runner=lambda command, check=False: fake_completed,
+                    stop_running=False,
+                    runner=lambda command, **kwargs: fake_completed,
                     which=lambda command: f'C:/bin/{command}.exe',
                 )
 
@@ -299,14 +300,15 @@ class MainRunWorkerTests(unittest.TestCase):
         with patch('builtins.print') as mock_print:
             exit_code = run_upgrade(
                 method='uv',
-                runner=lambda command, check=False: fake_completed,
+                stop_running=False,
+                runner=lambda command, **kwargs: fake_completed,
                 which=lambda command: f'C:/bin/{command}.exe',
             )
 
         self.assertEqual(exit_code, 0)
         printed_lines = [call.args[0] for call in mock_print.call_args_list]
         self.assertIn('upgrade_method=uv', printed_lines)
-        self.assertIn('upgrade_command=uv tool upgrade clawmind', printed_lines)
+        self.assertIn('upgrade_command=uv tool upgrade clawmind --reinstall', printed_lines)
 
     def test_run_upgrade_falls_back_to_python_m_pip(self) -> None:
         fake_completed = SimpleNamespace(returncode=0)
@@ -314,7 +316,8 @@ class MainRunWorkerTests(unittest.TestCase):
             with patch('builtins.print') as mock_print:
                 exit_code = run_upgrade(
                     method='pip',
-                    runner=lambda command, check=False: fake_completed,
+                    stop_running=False,
+                    runner=lambda command, **kwargs: fake_completed,
                 )
 
         self.assertEqual(exit_code, 0)
@@ -322,6 +325,127 @@ class MainRunWorkerTests(unittest.TestCase):
         self.assertIn('upgrade_method=pip', printed_lines)
         self.assertIn('upgrade_command=C:/Python313/python.exe -m pip install -U clawmind', printed_lines)
 
+    def test_run_upgrade_stops_other_clawmind_processes_before_direct_upgrade(self) -> None:
+        fake_completed = SimpleNamespace(returncode=0)
+        process_calls: list[list[str]] = []
+
+        def fake_process_runner(command, **kwargs):
+            process_calls.append(command)
+            if command[:2] == ['tasklist', '/FI']:
+                return SimpleNamespace(
+                    returncode=0,
+                    stdout='\"clawmind.exe\",\"111\",\"Console\",\"1\",\"10,000 K\"\n\"clawmind.exe\",\"222\",\"Console\",\"1\",\"10,000 K\"\n',
+                )
+            if command[:2] == ['taskkill', '/PID']:
+                return SimpleNamespace(returncode=0, stdout='SUCCESS')
+            raise AssertionError(f'unexpected process command: {command}')
+
+        with patch('builtins.print') as mock_print:
+            exit_code = run_upgrade(
+                method='uv',
+                runner=lambda command, **kwargs: fake_completed,
+                which=lambda command: f'C:/bin/{command}.exe',
+                process_runner=fake_process_runner,
+                current_pid=111,
+                executable_path='C:/Python313/python.exe',
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn(['taskkill', '/PID', '222', '/F', '/T'], process_calls)
+        printed_lines = [call.args[0] for call in mock_print.call_args_list]
+        self.assertIn('upgrade_stop_running=true', printed_lines)
+        self.assertIn('upgrade_stopped_pids=222', printed_lines)
+
+    def test_run_upgrade_defers_when_running_from_windows_entrypoint(self) -> None:
+        launched: dict[str, object] = {}
+
+        def fake_process_runner(command, **kwargs):
+            if command[:2] == ['tasklist', '/FI']:
+                return SimpleNamespace(returncode=0, stdout='\"clawmind.exe\",\"321\",\"Console\",\"1\",\"10,000 K\"\n')
+            raise AssertionError(f'unexpected process command: {command}')
+
+        def fake_launcher(command, **kwargs):
+            launched['command'] = command
+            launched['kwargs'] = kwargs
+            return SimpleNamespace(pid=999)
+
+        with patch('builtins.print') as mock_print:
+            exit_code = run_upgrade(
+                method='uv',
+                runner=lambda command, **kwargs: (_ for _ in ()).throw(AssertionError('direct runner should not be used')),
+                which=lambda command: f'C:/bin/{command}.exe',
+                process_runner=fake_process_runner,
+                launcher=fake_launcher,
+                current_pid=321,
+                executable_path='C:/Users/demo/.local/bin/clawmind.exe',
+            )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(launched['command'][0], 'powershell')
+        printed_lines = [call.args[0] for call in mock_print.call_args_list]
+        self.assertIn('upgrade_status=DEFERRED', printed_lines)
+        self.assertIn('upgrade_wait_pid=321', printed_lines)
+
+    def test_run_upgrade_returns_nonzero_when_deferred_launcher_fails(self) -> None:
+        def fake_process_runner(command, **kwargs):
+            if command[:2] == ['tasklist', '/FI']:
+                return SimpleNamespace(returncode=0, stdout='\"clawmind.exe\",\"321\",\"Console\",\"1\",\"10,000 K\"\n')
+            raise AssertionError(f'unexpected process command: {command}')
+
+        def fake_launcher(command, **kwargs):
+            raise OSError('launcher boom')
+
+        with patch('builtins.print') as mock_print:
+            exit_code = run_upgrade(
+                method='uv',
+                runner=lambda command, **kwargs: (_ for _ in ()).throw(AssertionError('direct runner should not be used')),
+                which=lambda command: f'C:/bin/{command}.exe',
+                process_runner=fake_process_runner,
+                launcher=fake_launcher,
+                current_pid=321,
+                executable_path='C:/Users/demo/.local/bin/clawmind.exe',
+            )
+
+        self.assertEqual(exit_code, 1)
+        printed_lines = [call.args[0] for call in mock_print.call_args_list]
+        self.assertIn('upgrade_status=FAILED', printed_lines)
+        self.assertTrue(any(line.startswith('error=failed to launch deferred upgrade helper:') for line in printed_lines))
+
+    def test_run_upgrade_treats_uv_entrypoint_copy_lock_as_warning_when_version_already_updated(self) -> None:
+        fake_completed = SimpleNamespace(
+            returncode=1,
+            stdout='Updated clawmind v0.1.4 -> v0.1.5\n - clawmind==0.1.4\n + clawmind==0.1.5\n',
+            stderr=(
+                'error: Failed to upgrade clawmind\n'
+                '  Caused by: Failed to install entrypoint\n'
+                '  Caused by: failed to copy file from X to Y: file is in use (os error 32)\n'
+            ),
+        )
+        with patch('builtins.print') as mock_print:
+            exit_code = run_upgrade(
+                method='uv',
+                stop_running=False,
+                runner=lambda command, **kwargs: fake_completed,
+                which=lambda command: f'C:/bin/{command}.exe',
+                executable_path='C:/Python313/python.exe',
+            )
+
+        self.assertEqual(exit_code, 0)
+        printed_lines = [call.args[0] for call in mock_print.call_args_list]
+        self.assertIn('Updated clawmind v0.1.4 -> v0.1.5\n - clawmind==0.1.4\n + clawmind==0.1.5\n', printed_lines)
+        self.assertIn('upgrade_status=SUCCESS_WITH_ENTRYPOINT_WARNING', printed_lines)
+        self.assertIn(
+            'upgrade_warning=package upgraded but entrypoint replacement was blocked by a Windows file lock',
+            printed_lines,
+        )
+
+    def test_main_upgrade_passes_stop_running_flag(self) -> None:
+        with patch('app.main.run_upgrade', return_value=0) as mock_run_upgrade:
+            exit_code = main(['upgrade', '--method', 'uv', '--no-stop-running'])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(mock_run_upgrade.call_args.kwargs['method'], 'uv')
+        self.assertIs(mock_run_upgrade.call_args.kwargs['stop_running'], False)
 
 
 class MainAdapterSelectionTests(unittest.TestCase):

@@ -75,9 +75,11 @@ sequenceDiagram
 ```text
 app/                Core application code
 tests/              Unit tests
-run_logs/           Execution audit records (main)
-runtime_artifacts/  Execution artifacts
+run_logs/           Execution audit records (created under the current working directory)
+runtime_artifacts/  Execution artifacts (created under the current working directory)
 ```
+
+When you run an installed CLI from another folder, ClawMind creates `run_logs/` and `runtime_artifacts/` in that execution directory, not next to the installed package files.
 
 ## Environment Requirements
 
@@ -95,6 +97,8 @@ Start the persistent worker to continuously watch Logseq tasks, route execution,
 clawmind run-worker
 ```
 
+By default, ClawMind resolves `.env` from `CLAWMIND_ENV_PATH`, then `cwd/.env`, then the package project root fallback. Runtime outputs are written under the current working directory.
+
 ## Roadmap
 
 - Support macOS.
@@ -106,5 +110,3 @@ clawmind run-worker
 
 - GitHub Issues: https://github.com/pigsly/ClawMind/issues
 - X.com @pigslybear
-
-

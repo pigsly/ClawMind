@@ -11,6 +11,7 @@ from hashlib import sha1
 from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 from typing import Callable
+import re
 
 from app.adapters.llm_adapter import CodexCliAdapter, GeminiApiAdapter, LlmAdapter
 from app.adapters.logseq_adapter import LogseqAdapter
@@ -172,15 +173,132 @@ def _resolve_upgrade_command(method: str) -> list[str]:
     if method == 'pipx':
         return ['pipx', 'upgrade', PACKAGE_NAME]
     if method == 'uv':
-        return ['uv', 'tool', 'upgrade', PACKAGE_NAME]
+        return ['uv', 'tool', 'upgrade', PACKAGE_NAME, '--reinstall']
     return [sys.executable, '-m', 'pip', 'install', '-U', PACKAGE_NAME]
+
+
+def _parse_tasklist_pids(stdout: str) -> list[int]:
+    pids: list[int] = []
+    for raw_line in stdout.splitlines():
+        line = raw_line.strip()
+        if not line.startswith('"'):
+            continue
+        parts = [part.strip('"') for part in line.split('","')]
+        if len(parts) < 2:
+            continue
+        try:
+            pids.append(int(parts[1]))
+        except ValueError:
+            continue
+    return pids
+
+
+def _list_running_clawmind_pids(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> list[int]:
+    if os.name != 'nt':
+        return []
+    completed = runner(
+        ['tasklist', '/FI', f'IMAGENAME eq {PACKAGE_NAME}.exe', '/FO', 'CSV', '/NH'],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        return []
+    return _parse_tasklist_pids(completed.stdout)
+
+
+def _stop_running_clawmind_processes(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    current_pid: int | None = None,
+) -> list[int]:
+    stopped_pids: list[int] = []
+    for pid in _list_running_clawmind_pids(runner=runner):
+        if current_pid is not None and pid == current_pid:
+            continue
+        completed = runner(
+            ['taskkill', '/PID', str(pid), '/F', '/T'],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode == 0:
+            stopped_pids.append(pid)
+    return stopped_pids
+
+
+def _is_windows_entrypoint_self_upgrade(executable_path: str | None = None) -> bool:
+    if os.name != 'nt':
+        return False
+    candidate = Path(executable_path or sys.argv[0] or '')
+    return candidate.name.lower() == f'{PACKAGE_NAME}.exe'
+
+
+def _quote_powershell_literal(value: str) -> str:
+    return value.replace("'", "''")
+
+
+def _build_deferred_upgrade_helper_command(command: list[str], *, current_pid: int) -> list[str]:
+    quoted_command = ', '.join(f"'{_quote_powershell_literal(part)}'" for part in command)
+    helper_script = (
+        f"$command = @({quoted_command}); "
+        f"$waitPid = {current_pid}; "
+        "while (Get-Process -Id $waitPid -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 200 }; "
+        "if ($command.Length -gt 1) { & $command[0] @($command[1..($command.Length - 1)]) } else { & $command[0] }; "
+        "exit $LASTEXITCODE"
+    )
+    return ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', helper_script]
+
+
+def _launch_deferred_upgrade(
+    command: list[str],
+    *,
+    current_pid: int,
+    launcher: Callable[..., object] = subprocess.Popen,
+) -> object:
+    creationflags = 0
+    creationflags |= getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+    creationflags |= getattr(subprocess, 'DETACHED_PROCESS', 0)
+    helper_command = _build_deferred_upgrade_helper_command(command, current_pid=current_pid)
+    return launcher(helper_command, creationflags=creationflags, close_fds=True)
+
+
+def _emit_completed_output(completed: subprocess.CompletedProcess[str]) -> None:
+    stdout = getattr(completed, 'stdout', None)
+    stderr = getattr(completed, 'stderr', None)
+    if stdout:
+        print(stdout, end='' if stdout.endswith(('\n', '\r')) else '\n')
+    if stderr:
+        print(stderr, end='' if stderr.endswith(('\n', '\r')) else '\n')
+
+
+def _is_uv_entrypoint_copy_false_failure(method: str, completed: subprocess.CompletedProcess[str]) -> bool:
+    if method != 'uv' or completed.returncode == 0:
+        return False
+    stdout = completed.stdout or ''
+    stderr = completed.stderr or ''
+    combined = f'{stdout}\n{stderr}'
+    return (
+        bool(re.search(rf'Updated\s+{PACKAGE_NAME}\s+v[^\s]+\s+->\s+v[^\s]+', combined))
+        and 'Failed to install entrypoint' in combined
+        and 'failed to copy file' in combined
+        and 'os error 32' in combined
+    )
 
 
 def run_upgrade(
     *,
     method: str,
+    stop_running: bool = True,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     which: Callable[[str], str | None] = shutil.which,
+    process_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    launcher: Callable[..., object] = subprocess.Popen,
+    current_pid: int | None = None,
+    executable_path: str | None = None,
 ) -> int:
     resolved_method = method
     if method == 'auto':
@@ -193,9 +311,35 @@ def run_upgrade(
         print(f'error={command[0]} not found in PATH')
         return 1
 
+    active_pid = os.getpid() if current_pid is None else current_pid
     print(f'upgrade_method={resolved_method}')
     print(f'upgrade_command={" ".join(command)}')
-    completed = runner(command, check=False)
+    print(f'upgrade_stop_running={str(stop_running).lower()}')
+
+    if stop_running:
+        stopped_pids = _stop_running_clawmind_processes(runner=process_runner, current_pid=active_pid)
+        print(
+            'upgrade_stopped_pids='
+            f'{",".join(str(pid) for pid in stopped_pids) if stopped_pids else "none"}'
+        )
+
+    if _is_windows_entrypoint_self_upgrade(executable_path=executable_path):
+        try:
+            _launch_deferred_upgrade(command, current_pid=active_pid, launcher=launcher)
+        except OSError as exc:
+            print('upgrade_status=FAILED')
+            print(f'error=failed to launch deferred upgrade helper: {exc}')
+            return 1
+        print('upgrade_status=DEFERRED')
+        print(f'upgrade_wait_pid={active_pid}')
+        return 0
+
+    completed = runner(command, check=False, capture_output=True, text=True)
+    _emit_completed_output(completed)
+    if _is_uv_entrypoint_copy_false_failure(resolved_method, completed):
+        print('upgrade_status=SUCCESS_WITH_ENTRYPOINT_WARNING')
+        print('upgrade_warning=package upgraded but entrypoint replacement was blocked by a Windows file lock')
+        return 0
     return int(completed.returncode)
 
 
@@ -372,6 +516,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser('install-info')
     upgrade_parser = subparsers.add_parser('upgrade')
     upgrade_parser.add_argument('--method', default='auto', choices=['auto', 'pipx', 'uv', 'pip'])
+    upgrade_parser.add_argument(
+        '--stop-running',
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help='Stop other running clawmind processes before upgrading',
+    )
     return parser
 
 
@@ -405,7 +555,7 @@ def main(argv: list[str] | None = None) -> int:
     if command == 'install-info':
         return print_install_info()
     if command == 'upgrade':
-        return run_upgrade(method=args.method)
+        return run_upgrade(method=args.method, stop_running=args.stop_running)
 
     config = AppConfig()
     llm_adapter = build_llm_adapter(config, args)

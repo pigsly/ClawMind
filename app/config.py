@@ -9,6 +9,7 @@ from pathlib import Path
 class AppConfig:
     project_name: str = 'ClawMind'
     root_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parent.parent)
+    runtime_root_dir: Path = field(default_factory=lambda: Path.cwd())
     config_source: str = field(init=False)
     env_path: Path = field(init=False)
     logseq_dir: Path = field(init=False)
@@ -36,8 +37,8 @@ class AppConfig:
         max_retries_value = env_values.get('MAX_RETRIES') or os.environ.get('MAX_RETRIES')
         codex_timeout_value = env_values.get('CODEX_TIMEOUT_SECONDS') or os.environ.get('CODEX_TIMEOUT_SECONDS')
         self.logseq_dir = Path(logseq_value) if logseq_value else self.root_dir / 'logseq'
-        self.run_logs_dir = self.root_dir / 'run_logs'
-        self.runtime_artifacts_dir = self.root_dir / 'runtime_artifacts'
+        self.run_logs_dir = self.runtime_root_dir / 'run_logs'
+        self.runtime_artifacts_dir = self.runtime_root_dir / 'runtime_artifacts'
         self.codex_cli_path = codex_value
         self.gemini_api_key = gemini_api_key.strip() if gemini_api_key and gemini_api_key.strip() else None
         self.gemini_flash_model = gemini_flash_model.strip()

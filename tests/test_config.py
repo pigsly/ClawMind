@@ -32,6 +32,32 @@ class AppConfigTests(unittest.TestCase):
         self.assertEqual(config.config_source, 'env_var:CLAWMIND_ENV_PATH')
         self.assertEqual(config.logseq_dir, Path('D:/explicit'))
 
+    def test_runtime_output_dirs_follow_execution_directory(self) -> None:
+        project_root = self.temp_root / 'project'
+        project_root.mkdir()
+        runtime_root = self.temp_root / 'runtime'
+        runtime_root.mkdir()
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('pathlib.Path.cwd', return_value=runtime_root):
+                config = AppConfig(root_dir=project_root)
+
+        self.assertEqual(config.root_dir, project_root)
+        self.assertEqual(config.runtime_root_dir, runtime_root)
+        self.assertEqual(config.run_logs_dir, runtime_root / 'run_logs')
+        self.assertEqual(config.runtime_artifacts_dir, runtime_root / 'runtime_artifacts')
+
+    def test_repo_mode_runtime_outputs_still_land_in_repo_root_when_executed_there(self) -> None:
+        project_root = self.temp_root / 'project'
+        project_root.mkdir()
+
+        with patch.dict(os.environ, {}, clear=True):
+            with patch('pathlib.Path.cwd', return_value=project_root):
+                config = AppConfig(root_dir=project_root)
+
+        self.assertEqual(config.run_logs_dir, project_root / 'run_logs')
+        self.assertEqual(config.runtime_artifacts_dir, project_root / 'runtime_artifacts')
+
     def test_defaults_llm_brand_to_codex_cli(self) -> None:
         project_root = self.temp_root / 'project'
         project_root.mkdir()
